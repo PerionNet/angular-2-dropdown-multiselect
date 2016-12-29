@@ -39,12 +39,15 @@ export interface IMultiSelectSettings {
     checkedStyle?: 'checkboxes' | 'glyphicon';
     buttonClasses?: string;
     selectionLimit?: number;
+    dropdownSelection?: boolean;
     closeOnSelect?: boolean;
     autoUnselect?: boolean;
     showCheckAll?: boolean;
     showUncheckAll?: boolean;
     dynamicTitleMaxItems?: number;
     maxHeight?: string;
+    onItemSelectEvent: any;
+    customTitles: boolean;
 }
 
 export interface IMultiSelectTexts {
@@ -113,13 +116,15 @@ export class MultiSelectSearchFilter {
         </div>
     `
 })
-export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccessor {
+export class MultiselectDropdown implements OnInit, OnChanges, DoCheck, ControlValueAccessor {
 
     @Input() options: Array<IMultiSelectOption>;
     @Input() settings: IMultiSelectSettings;
     @Input() texts: IMultiSelectTexts;
+    @Input() customTitle: string;
     @Output() selectionLimitReached = new EventEmitter();
     @Output() dropdownClosed = new EventEmitter();
+    @Output() clickOnSelector = new EventEmitter();
 
     @HostListener('document: click', ['$event.target'])
     onClick(target: HTMLElement) {
@@ -137,26 +142,32 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
 
     onModelChange: Function = (_: any) => {
     };
+
     onModelTouched: Function = () => {
     };
+
     model: number[];
     title: string;
     differ: any;
     numSelected: number = 0;
     isVisible: boolean = false;
     searchFilterText: string = '';
+    @Output() onSelect = new EventEmitter<any>();
     defaultSettings: IMultiSelectSettings = {
         pullRight: false,
         enableSearch: false,
         checkedStyle: 'checkboxes',
         buttonClasses: 'btn btn-default',
         selectionLimit: 0,
+        dropdownSelection: false,
         closeOnSelect: false,
         autoUnselect: false,
         showCheckAll: false,
         showUncheckAll: false,
         dynamicTitleMaxItems: 3,
         maxHeight: '300px',
+        onItemSelectEvent: null,
+        customTitles: false
     };
     defaultTexts: IMultiSelectTexts = {
         checkAll: 'Check all',
@@ -176,6 +187,12 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
         this.settings = Object.assign(this.defaultSettings, this.settings);
         this.texts = Object.assign(this.defaultTexts, this.texts);
         this.title = this.texts.defaultTitle;
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes.customTitle && changes.customTitle.currentValue) {
+            this.updateTitle(changes.customTitle.currentValue);
+        }
     }
 
     writeValue(value: any): void {
@@ -206,6 +223,7 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
 
     toggleDropdown() {
         this.isVisible = !this.isVisible;
+        this.clickOnSelector.emit();
         if (!this.isVisible) {
             this.dropdownClosed.emit();
         }
@@ -223,7 +241,11 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
         if (index > -1) {
             this.model.splice(index, 1);
         } else {
-            if (this.settings.selectionLimit === 0 || this.model.length < this.settings.selectionLimit) {
+            if(this.settings.dropdownSelection) {
+                this.model.shift();
+                this.model.push(option.id);
+            }
+            else if (this.settings.selectionLimit === 0 || this.model.length < this.settings.selectionLimit) {
                 this.model.push(option.id);
             } else {
                 if (this.settings.autoUnselect) {
@@ -238,23 +260,31 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
         if (this.settings.closeOnSelect) {
             this.toggleDropdown();
         }
-        this.onModelChange(this.model);
+        this.onSelect.emit(option);
+        //  this.onModelChange(this.model);
     }
 
     updateNumSelected() {
         this.numSelected = this.model && this.model.length || 0;
     }
 
-    updateTitle() {
-        if (this.numSelected === 0) {
-            this.title = this.texts.defaultTitle;
-        } else if (this.settings.dynamicTitleMaxItems >= this.numSelected) {
-            this.title = this.options
-                .filter((option: IMultiSelectOption) => this.model && this.model.indexOf(option.id) > -1)
-                .map((option: IMultiSelectOption) => option.name)
-                .join(', ');
-        } else {
-            this.title = this.numSelected + ' ' + (this.numSelected === 1 ? this.texts.checked : this.texts.checkedPlural);
+    updateTitle(title) {
+        if (this.settings.customTitles) {
+            if (title)
+                this.title = title;
+        }
+        else
+        {
+            if (this.numSelected === 0) {
+                this.title = this.texts.defaultTitle;
+            } else if (this.settings.dynamicTitleMaxItems >= this.numSelected) {
+                this.title = this.options
+                    .filter((option: IMultiSelectOption) => this.model && this.model.indexOf(option.id) > -1)
+                    .map((option: IMultiSelectOption) => option.name)
+                    .join(', ');
+            } else {
+                this.title = this.numSelected + ' ' + (this.numSelected === 1 ? this.texts.checked : this.texts.checkedPlural);
+            }
         }
     }
 
