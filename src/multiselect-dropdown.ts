@@ -17,7 +17,9 @@ import {
     Output,
     EventEmitter,
     forwardRef,
-    IterableDiffers
+    IterableDiffers,
+    OnChanges,
+    SimpleChanges
 } from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule, NG_VALUE_ACCESSOR, ControlValueAccessor} from '@angular/forms';
@@ -213,7 +215,7 @@ export class MultiselectDropdown implements OnInit, OnChanges, DoCheck, ControlV
         let changes = this.differ.diff(this.model);
         if (changes) {
             this.updateNumSelected();
-            this.updateTitle();
+            this.updateTitle(undefined);
         }
     }
 
