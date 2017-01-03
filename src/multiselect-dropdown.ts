@@ -191,7 +191,7 @@ export class MultiselectDropdown implements OnInit, OnChanges, DoCheck, ControlV
         this.title = this.texts.defaultTitle;
     }
 
-    ngOnChanges(changes: SimpleChanges): void {
+    ngOnChanges(changes: any): void {
         if (changes.customTitle && changes.customTitle.currentValue) {
             this.updateTitle(changes.customTitle.currentValue);
         }
